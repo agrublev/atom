@@ -390,8 +390,10 @@ class TextEditorComponent {
       this.measureGutterDimensions()
       this.remeasureGutterDimensions = false
     }
+
+    const shouldOverlayScrollbars = TextEditor.shouldOverlayScrollbars()
     const wasHorizontalScrollbarVisible = (
-      this.canScrollHorizontally() &&
+      !shouldOverlayScrollbars &&
       this.getHorizontalScrollbarHeight() > 0
     )
 
@@ -400,7 +402,7 @@ class TextEditorComponent {
     this.updateAbsolutePositionedDecorations()
 
     const isHorizontalScrollbarVisible = (
-      this.canScrollHorizontally() &&
+      !shouldOverlayScrollbars &&
       this.getHorizontalScrollbarHeight() > 0
     )
 
@@ -459,13 +461,13 @@ class TextEditorComponent {
     if (this.hasInitialMeasurements) {
       if (model.getAutoHeight()) {
         clientContainerHeight = this.getContentHeight()
-        if (this.canScrollHorizontally()) clientContainerHeight += this.getHorizontalScrollbarHeight()
+        if (!TextEditor.shouldOverlayScrollbars()) clientContainerHeight += this.getHorizontalScrollbarHeight()
         clientContainerHeight += 'px'
       }
       if (model.getAutoWidth()) {
         style.width = 'min-content'
         clientContainerWidth = this.getGutterContainerWidth() + this.getContentWidth()
-        if (this.canScrollVertically()) clientContainerWidth += this.getVerticalScrollbarWidth()
+        if (!TextEditor.shouldOverlayScrollbars()) clientContainerWidth += this.getVerticalScrollbarWidth()
         clientContainerWidth += 'px'
       } else {
         style.width = this.element.style.width
@@ -742,23 +744,20 @@ class TextEditorComponent {
     if (this.shouldRenderDummyScrollbars && !this.props.model.isMini()) {
       let scrollHeight, scrollTop, horizontalScrollbarHeight
       let scrollWidth, scrollLeft, verticalScrollbarWidth, forceScrollbarVisible
-      let canScrollHorizontally, canScrollVertically
 
       if (this.hasInitialMeasurements) {
         scrollHeight = this.getScrollHeight()
         scrollWidth = this.getScrollWidth()
         scrollTop = this.getScrollTop()
         scrollLeft = this.getScrollLeft()
-        canScrollHorizontally = this.canScrollHorizontally()
-        canScrollVertically = this.canScrollVertically()
         horizontalScrollbarHeight =
-          canScrollHorizontally
-          ? this.getHorizontalScrollbarHeight()
-          : 0
+          TextEditor.shouldOverlayScrollbars()
+          ? 0
+          : this.getHorizontalScrollbarHeight()
         verticalScrollbarWidth =
-          canScrollVertically
-          ? this.getVerticalScrollbarWidth()
-          : 0
+          TextEditor.shouldOverlayScrollbars()
+          ? 0
+          : this.getVerticalScrollbarWidth()
         forceScrollbarVisible = this.remeasureScrollbars
       } else {
         forceScrollbarVisible = true
@@ -770,7 +769,6 @@ class TextEditorComponent {
           orientation: 'vertical',
           didScroll: this.didScrollDummyScrollbar,
           didMouseDown: this.didMouseDownOnContent,
-          canScroll: canScrollVertically,
           scrollHeight,
           scrollTop,
           horizontalScrollbarHeight,
@@ -781,7 +779,6 @@ class TextEditorComponent {
           orientation: 'horizontal',
           didScroll: this.didScrollDummyScrollbar,
           didMouseDown: this.didMouseDownOnContent,
-          canScroll: canScrollHorizontally,
           scrollWidth,
           scrollLeft,
           verticalScrollbarWidth,
@@ -2122,23 +2119,8 @@ class TextEditorComponent {
     const newEditorWidthInChars = this.getScrollContainerClientWidthInBaseCharacters()
     if (newEditorWidthInChars !== model.getEditorWidthInChars()) {
       this.suppressUpdates = true
-
-      const renderedStartRow = this.getRenderedStartRow()
       this.props.model.setEditorWidthInChars(newEditorWidthInChars)
-
-      // Relaying a change in to the editor's client width may cause the
-      // vertical scrollbar to appear or disappear, which causes the editor's
-      // client width to change *again*. Make sure the display layer is fully
-      // populated for the visible area before recalculating the editor's
-      // width in characters. Then update the display layer *again* just in
-      // case a change in scrollbar visibility causes lines to wrap
-      // differently. We capture the renderedStartRow before resetting the
-      // display layer because once it has been reset, we can't compute the
-      // rendered start row accurately. 😥
-      this.populateVisibleRowRange(renderedStartRow)
-      this.props.model.setEditorWidthInChars(this.getScrollContainerClientWidthInBaseCharacters())
       this.derivedDimensionsCache = {}
-
       this.suppressUpdates = false
     }
   }
@@ -2633,42 +2615,19 @@ class TextEditorComponent {
   }
 
   getScrollContainerClientWidth () {
-    if (this.canScrollVertically()) {
-      return this.getScrollContainerWidth() - this.getVerticalScrollbarWidth()
-    } else {
+    if (TextEditor.shouldOverlayScrollbars()) {
       return this.getScrollContainerWidth()
+    } else {
+      return this.getScrollContainerWidth() - this.getVerticalScrollbarWidth()
     }
   }
 
   getScrollContainerClientHeight () {
-    if (this.canScrollHorizontally()) {
-      return this.getScrollContainerHeight() - this.getHorizontalScrollbarHeight()
-    } else {
+    if (TextEditor.shouldOverlayScrollbars()) {
       return this.getScrollContainerHeight()
+    } else {
+      return this.getScrollContainerHeight() - this.getHorizontalScrollbarHeight()
     }
-  }
-
-  canScrollVertically () {
-    const {model} = this.props
-    if (model.isMini()) return false
-    if (model.getAutoHeight()) return false
-    if (this.getContentHeight() > this.getScrollContainerHeight()) return true
-    return (
-      this.getContentWidth() > this.getScrollContainerWidth() &&
-      this.getContentHeight() > (this.getScrollContainerHeight() - this.getHorizontalScrollbarHeight())
-    )
-  }
-
-  canScrollHorizontally () {
-    const {model} = this.props
-    if (model.isMini()) return false
-    if (model.getAutoWidth()) return false
-    if (model.isSoftWrapped()) return false
-    if (this.getContentWidth() > this.getScrollContainerWidth()) return true
-    return (
-      this.getContentHeight() > this.getScrollContainerHeight() &&
-      this.getContentWidth() > (this.getScrollContainerWidth() - this.getVerticalScrollbarWidth())
-    )
   }
 
   getScrollHeight () {
@@ -3015,7 +2974,7 @@ class DummyScrollbarComponent {
     const {
       orientation, scrollWidth, scrollHeight,
       verticalScrollbarWidth, horizontalScrollbarHeight,
-      canScroll, forceScrollbarVisible, didScroll
+      forceScrollbarVisible, didScroll
     } = this.props
 
     const outerStyle = {
@@ -3024,7 +2983,6 @@ class DummyScrollbarComponent {
       zIndex: 1,
       willChange: 'transform'
     }
-    if (!canScroll) outerStyle.visibility = 'hidden'
 
     const innerStyle = {}
     if (orientation === 'horizontal') {

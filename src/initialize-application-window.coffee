@@ -79,6 +79,10 @@ module.exports = ({blobStore}) ->
   {ipcRenderer} = require 'electron'
   {resourcePath, devMode, env} = getWindowLoadSettings()
   require './electron-shims'
+  scrollbarStyle = require 'scrollbar-style'
+
+  scrollbarStyle.observePreferredScrollbarStyle (style) ->
+    TextEditor.setOverlayScrollbars(style is 'overlay')
 
   # Add application-specific exports to module search path.
   exportsPath = path.join(resourcePath, 'exports')

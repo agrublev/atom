@@ -122,6 +122,16 @@ class TextEditor {
     return editor
   }
 
+  static shouldOverlayScrollbars () {
+    return this.overlayScrollbars || false
+  }
+
+  static setOverlayScrollbars (shouldOverlay) {
+    this.overlayScrollbars = shouldOverlay
+    if (TextEditorComponent == null) { TextEditorComponent = require('./text-editor-component') }
+    TextEditorComponent.didUpdateScrollbarStyles()
+  }
+
   constructor (params = {}) {
     if (this.constructor.clipboard == null) {
       throw new Error('Must call TextEditor.setClipboard at least once before creating TextEditor instances')
