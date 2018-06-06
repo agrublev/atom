@@ -750,20 +750,14 @@ class TextEditorComponent {
         scrollWidth = this.getScrollWidth()
         scrollTop = this.getScrollTop()
         scrollLeft = this.getScrollLeft()
-        horizontalScrollbarHeight =
-          TextEditor.shouldOverlayScrollbars()
-          ? 0
-          : this.getHorizontalScrollbarHeight()
-        verticalScrollbarWidth =
-          TextEditor.shouldOverlayScrollbars()
-          ? 0
-          : this.getVerticalScrollbarWidth()
+        horizontalScrollbarHeight = this.getHorizontalScrollbarHeight()
+        verticalScrollbarWidth = this.getVerticalScrollbarWidth()
         forceScrollbarVisible = this.remeasureScrollbars
       } else {
         forceScrollbarVisible = true
       }
 
-      const dummyScrollbarVnodes = [
+      return [
         $(DummyScrollbarComponent, {
           ref: 'verticalScrollbar',
           orientation: 'vertical',
@@ -774,6 +768,7 @@ class TextEditorComponent {
           horizontalScrollbarHeight,
           forceScrollbarVisible
         }),
+
         $(DummyScrollbarComponent, {
           ref: 'horizontalScrollbar',
           orientation: 'horizontal',
@@ -783,13 +778,10 @@ class TextEditorComponent {
           scrollLeft,
           verticalScrollbarWidth,
           forceScrollbarVisible
-        })
-      ]
+        }),
 
-      // If both scrollbars are visible, push a dummy element to force a "corner"
-      // to render where the two scrollbars meet at the lower right
-      if (verticalScrollbarWidth > 0 && horizontalScrollbarHeight > 0) {
-        dummyScrollbarVnodes.push($.div(
+        // Force a "corner" to render where the two scrollbars meet at the lower right.
+        $.div(
           {
             ref: 'scrollbarCorner',
             className: 'scrollbar-corner',
@@ -802,10 +794,8 @@ class TextEditorComponent {
               overflow: 'scroll'
             }
           }
-        ))
-      }
-
-      return dummyScrollbarVnodes
+        )
+      ]
     } else {
       return null
     }
