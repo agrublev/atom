@@ -296,31 +296,6 @@ describe('TextEditorComponent', () => {
       expect(lineNumberNodeForScreenRow(component, 0).querySelector('.foldable')).toBeNull()
     })
 
-    it('gracefully handles folds that change the soft-wrap boundary by causing the vertical scrollbar to disappear (regression)', async () => {
-      const text =  ('x'.repeat(100) + '\n') + 'y\n'.repeat(28) + '  z\n'.repeat(50)
-      const {component, element, editor} = buildComponent({text, height: 1000, width: 500})
-
-      element.addEventListener('scroll', (event) => {
-        event.stopPropagation()
-      }, true)
-
-      editor.setSoftWrapped(true)
-      jasmine.attachToDOM(element)
-      await component.getNextUpdatePromise()
-
-      const firstScreenLineLengthWithVerticalScrollbar = element.querySelector('.line').textContent.length
-
-      setScrollTop(component, 620)
-      await component.getNextUpdatePromise()
-
-      editor.foldBufferRow(28)
-      await component.getNextUpdatePromise()
-
-      const firstLineElement = element.querySelector('.line')
-      expect(firstLineElement.dataset.screenRow).toBe('0')
-      expect(firstLineElement.textContent.length).toBeGreaterThan(firstScreenLineLengthWithVerticalScrollbar)
-    })
-
     it('shows the foldable icon on the last screen row of a buffer row that can be folded', async () => {
       const {component, element, editor} = buildComponent({text: 'abc\n  de\nfghijklm\n  no', softWrapped: true})
       await setEditorWidthInCharacters(component, 5)
@@ -331,8 +306,10 @@ describe('TextEditorComponent', () => {
       expect(lineNumberNodeForScreenRow(component, 4).classList.contains('foldable')).toBe(false)
     })
 
-    it('renders dummy vertical and horizontal scrollbars when content overflows', async () => {
-      const {component, element, editor} = buildComponent({height: 100, width: 100})
+    it('renders dummy vertical and horizontal scrollbars', async () => {
+      const width = 100
+      const height = 100
+      const {component, element, editor} = buildComponent({height, width})
       const verticalScrollbar = component.refs.verticalScrollbar.element
       const horizontalScrollbar = component.refs.horizontalScrollbar.element
       expect(verticalScrollbar.scrollHeight).toBe(component.getContentHeight())
@@ -340,10 +317,7 @@ describe('TextEditorComponent', () => {
       expect(getVerticalScrollbarWidth(component)).toBeGreaterThan(0)
       expect(getHorizontalScrollbarHeight(component)).toBeGreaterThan(0)
       expect(verticalScrollbar.style.bottom).toBe(getVerticalScrollbarWidth(component) + 'px')
-      expect(verticalScrollbar.style.visibility).toBe('')
       expect(horizontalScrollbar.style.right).toBe(getHorizontalScrollbarHeight(component) + 'px')
-      expect(horizontalScrollbar.style.visibility).toBe('')
-      expect(component.refs.scrollbarCorner).toBeDefined()
 
       setScrollTop(component, 100)
       await setScrollLeft(component, 100)
@@ -356,65 +330,24 @@ describe('TextEditorComponent', () => {
       expect(component.getScrollTop()).toBe(120)
       expect(component.getScrollLeft()).toBe(120)
 
-      editor.setText('a\n'.repeat(15))
-      await component.getNextUpdatePromise()
-      expect(getVerticalScrollbarWidth(component)).toBeGreaterThan(0)
-      expect(getHorizontalScrollbarHeight(component)).toBe(0)
-      expect(verticalScrollbar.style.visibility).toBe('')
-      expect(verticalScrollbar.style.bottom).toBe('0px')
-      expect(horizontalScrollbar.style.visibility).toBe('hidden')
-      expect(component.refs.scrollbarCorner).toBeUndefined()
-
-      editor.setText('a'.repeat(100))
-      await component.getNextUpdatePromise()
-      expect(getVerticalScrollbarWidth(component)).toBe(0)
-      expect(getHorizontalScrollbarHeight(component)).toBeGreaterThan(0)
-      expect(verticalScrollbar.style.visibility).toBe('hidden')
-      expect(horizontalScrollbar.style.right).toBe('0px')
-      expect(horizontalScrollbar.style.visibility).toBe('')
-      expect(component.refs.scrollbarCorner).toBeUndefined()
-
-      editor.setText('')
-      await component.getNextUpdatePromise()
-      expect(getVerticalScrollbarWidth(component)).toBe(0)
-      expect(getHorizontalScrollbarHeight(component)).toBe(0)
-      expect(verticalScrollbar.style.visibility).toBe('hidden')
-      expect(horizontalScrollbar.style.visibility).toBe('hidden')
-      expect(component.refs.scrollbarCorner).toBeUndefined()
-
       editor.setText(SAMPLE_TEXT)
       await component.getNextUpdatePromise()
 
-      // Does not show scrollbars if the content perfectly fits
-      element.style.width = component.getGutterContainerWidth() + component.getContentWidth() + 'px'
-      element.style.height = component.getContentHeight() + 'px'
-      await component.getNextUpdatePromise()
-      expect(getVerticalScrollbarWidth(component)).toBe(0)
-      expect(getHorizontalScrollbarHeight(component)).toBe(0)
-      expect(verticalScrollbar.style.visibility).toBe('hidden')
-      expect(horizontalScrollbar.style.visibility).toBe('hidden')
+      // By default, scrollbars are overlaid onto the content, so they do not take up space.
+      expect(TextEditor.shouldOverlayScrollbars()).toBe(true)
+      expect(component.getScrollContainerClientWidth()).toBe(width - component.getGutterContainerWidth())
+      expect(component.getScrollContainerClientHeight()).toBe(height)
 
-      // Shows scrollbars if the only reason we overflow is the presence of the
-      // scrollbar for the opposite axis.
-      element.style.width = component.getGutterContainerWidth() + component.getContentWidth() - 1 + 'px'
-      element.style.height = component.getContentHeight() + component.getHorizontalScrollbarHeight() - 1 + 'px'
-      await component.getNextUpdatePromise()
-      expect(getVerticalScrollbarWidth(component)).toBeGreaterThan(0)
-      expect(getHorizontalScrollbarHeight(component)).toBeGreaterThan(0)
-      expect(verticalScrollbar.style.visibility).toBe('')
-      expect(horizontalScrollbar.style.visibility).toBe('')
-
-      element.style.width = component.getGutterContainerWidth() + component.getContentWidth() + component.getVerticalScrollbarWidth() - 1 + 'px'
-      element.style.height = component.getContentHeight() - 1 + 'px'
-      await component.getNextUpdatePromise()
-      expect(getVerticalScrollbarWidth(component)).toBeGreaterThan(0)
-      expect(getHorizontalScrollbarHeight(component)).toBeGreaterThan(0)
-      expect(verticalScrollbar.style.visibility).toBe('')
-      expect(horizontalScrollbar.style.visibility).toBe('')
+      // On macOS when `Show Scrollbars > Always` is selected, room is reserved for the scrollbars.
+      TextEditor.setOverlayScrollbars(false)
+      expect(component.getScrollContainerClientWidth()).toBe(width - component.getGutterContainerWidth() - getVerticalScrollbarWidth(component))
+      expect(component.getScrollContainerClientHeight()).toBe(height - getHorizontalScrollbarHeight(component))
     })
 
     describe('when scrollbar styles change or the editor element is detached and then reattached', () => {
       it('updates the bottom/right of dummy scrollbars and client height/width measurements', async () => {
+        TextEditor.setOverlayScrollbars(false)
+
         const {component, element, editor} = buildComponent({height: 100, width: 100})
         expect(getHorizontalScrollbarHeight(component)).toBeGreaterThan(10)
         expect(getVerticalScrollbarWidth(component)).toBeGreaterThan(10)
@@ -683,13 +616,18 @@ describe('TextEditorComponent', () => {
       expect(scrollContainer.clientWidth).toBe(scrollContainer.scrollWidth)
     })
 
-    it('accounts for the width of the vertical scrollbar when soft-wrapping lines', async () => {
+    it('accounts for the width of the vertical scrollbar when soft-wrapping lines when not overlaying scrollbars', async () => {
       const {component, element, editor} = buildComponent({
         height: 200,
         text: 'a'.repeat(300),
         softWrapped: true
       })
       await setEditorWidthInCharacters(component, 23)
+      expect(Math.floor(component.getScrollContainerClientWidth() / component.getBaseCharacterWidth())).toBe(22)
+      expect(editor.lineLengthForScreenRow(0)).toBe(22)
+
+      TextEditor.setOverlayScrollbars(false)
+      await component.getNextUpdatePromise()
       expect(Math.floor(component.getScrollContainerClientWidth() / component.getBaseCharacterWidth())).toBe(20)
       expect(editor.lineLengthForScreenRow(0)).toBe(20)
     })
@@ -744,22 +682,15 @@ describe('TextEditorComponent', () => {
       expect(element.offsetHeight).toBe(component.getContentHeight() + 2 * editorPadding)
       expect(element.offsetHeight).toBeGreaterThan(initialHeight)
 
-      // When a horizontal scrollbar is visible, autoHeight accounts for it
-      editor.update({autoWidth: false})
+      TextEditor.setOverlayScrollbars(false)
+      expect(getHorizontalScrollbarHeight(component)).toBeGreaterThan(0)
+      expect(getVerticalScrollbarWidth(component)).toBeGreaterThan(0)
+
+      // autoHeight accounts for the height of the horizontal scrollbar
       await component.getNextUpdatePromise()
-      element.style.width = component.getGutterContainerWidth() + component.getContentHeight() - 20 + 'px'
-      await component.getNextUpdatePromise()
-      expect(component.canScrollHorizontally()).toBe(true)
-      expect(component.canScrollVertically()).toBe(false)
       expect(element.offsetHeight).toBe(component.getContentHeight() + component.getHorizontalScrollbarHeight() + 2 * editorPadding)
 
-      // When a vertical scrollbar is visible, autoWidth accounts for it
-      editor.update({autoWidth: true, autoHeight: false})
-      await component.getNextUpdatePromise()
-      element.style.height = component.getContentHeight() - 20
-      await component.getNextUpdatePromise()
-      expect(component.canScrollHorizontally()).toBe(false)
-      expect(component.canScrollVertically()).toBe(true)
+      // autoWidth accounts for the width of the vertical scrollbar
       expect(element.offsetWidth).toBe(
         component.getGutterContainerWidth() +
         component.getContentWidth() +
@@ -1056,8 +987,6 @@ describe('TextEditorComponent', () => {
       editor.setText('x'.repeat(20) + 'y'.repeat(20))
       await component.getNextUpdatePromise()
 
-      expect(component.canScrollVertically()).toBe(false)
-      expect(component.canScrollHorizontally()).toBe(false)
       expect(component.refs.horizontalScrollbar).toBeUndefined()
       expect(component.refs.verticalScrollbar).toBeUndefined()
     })

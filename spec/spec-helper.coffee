@@ -98,6 +98,7 @@ beforeEach ->
 
   spyOn(pathwatcher.File.prototype, "detectResurrectionAfterDelay").andCallFake -> @detectResurrection()
   spyOn(TextEditor.prototype, "shouldPromptToSave").andReturn false
+  TextEditor.setOverlayScrollbars(true)
 
   # make tokenization synchronous
   TextMateLanguageMode.prototype.chunkSize = Infinity

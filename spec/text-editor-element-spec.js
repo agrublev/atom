@@ -360,9 +360,9 @@ describe('TextEditorElement', () => {
       element = buildTextEditorElement()
       element.getModel().update({autoHeight: false})
       element.getModel().setText('lorem\nipsum\ndolor\nsit\namet')
-      element.setHeight(20)
+      element.setHeight(10)
       await element.getNextUpdatePromise()
-      element.setWidth(20)
+      element.setWidth(10)
       await element.getNextUpdatePromise()
 
       element.setScrollTop(22)
@@ -440,9 +440,9 @@ describe('TextEditorElement', () => {
       element = buildTextEditorElement()
       element.getModel().update({autoHeight: false})
       element.getModel().setText('lorem\nipsum\ndolor\nsit\namet')
-      element.setHeight(20)
+      element.setHeight(10)
       await element.getNextUpdatePromise()
-      element.setWidth(20)
+      element.setWidth(10)
       await element.getNextUpdatePromise()
     })
 
