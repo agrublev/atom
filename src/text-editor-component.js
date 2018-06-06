@@ -746,8 +746,8 @@ class TextEditorComponent {
       let scrollWidth, scrollLeft, verticalScrollbarWidth, forceScrollbarVisible
 
       if (this.hasInitialMeasurements) {
-        scrollHeight = this.getScrollHeight()
-        scrollWidth = this.getScrollWidth()
+        scrollHeight = this.getScrollHeight(true)
+        scrollWidth = this.getContentWidth()
         scrollTop = this.getScrollTop()
         scrollLeft = this.getScrollLeft()
         horizontalScrollbarHeight = this.getHorizontalScrollbarHeight()
@@ -2620,13 +2620,13 @@ class TextEditorComponent {
     }
   }
 
-  getScrollHeight () {
+  getScrollHeight (contentOnly) {
     if (this.props.model.getScrollPastEnd()) {
       return this.getContentHeight() + Math.max(
         3 * this.getLineHeight(),
         this.getScrollContainerClientHeight() - (3 * this.getLineHeight())
       )
-    } else if (this.props.model.getAutoHeight()) {
+    } else if (this.props.model.getAutoHeight() || contentOnly) {
       return this.getContentHeight()
     } else {
       return Math.max(this.getContentHeight(), this.getScrollContainerClientHeight())
