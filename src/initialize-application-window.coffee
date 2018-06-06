@@ -81,8 +81,11 @@ module.exports = ({blobStore}) ->
   require './electron-shims'
   scrollbarStyle = require 'scrollbar-style'
 
-  scrollbarStyle.observePreferredScrollbarStyle (style) ->
-    TextEditor.setOverlayScrollbars(style is 'overlay')
+  if process.platform is 'darwin'
+    scrollbarStyle.observePreferredScrollbarStyle (style) ->
+      TextEditor.setOverlayScrollbars(style is 'overlay')
+  else
+    TextEditor.setOverlayScrollbars(true)
 
   # Add application-specific exports to module search path.
   exportsPath = path.join(resourcePath, 'exports')
